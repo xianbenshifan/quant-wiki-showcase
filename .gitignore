@@ -8,9 +8,11 @@ quartz/plugins/loader/.plugins/
 # 本机相关配置（含本机 vault 路径，不要提交）
 publish.config.json
 
-# 运行日志与截图
-*.log
-*.png
+# 运行日志与截图（只忽略仓库根目录的散落文件，
+# 注意不要写成 *.png —— Quartz 自己的静态资源 quartz/static/*.png 会被误伤，
+# 那会导致 CI 全新克隆构建时报 Input file is missing: quartz/static/icon.png）
+/*.log
+/*.png
 .playwright-mcp/
 
 # 注意：不要把 content/ 加进忽略列表。

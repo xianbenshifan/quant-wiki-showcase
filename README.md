@@ -72,19 +72,49 @@ python scripts/verify_build.py
 
 ## 部署到 Cloudflare Pages
 
-产物是纯静态，直接上传即可：
+**当前状态**：已部署到 <https://quant-wiki-showcase.pages.dev>（Cloudflare Pages 项目 `quant-wiki-showcase`）。
+
+产出物只有 HTML/CSS/JS/JSON（约 15 MB / 473 文件），直接上传即可：
 
 ```bash
-npx wrangler pages deploy public --project-name <你的项目名>
+npx quartz build
+npx wrangler pages deploy public --project-name quant-wiki-showcase --branch main
 ```
 
-也可以用 Pages 的 Git 集成（连本仓库，构建命令 `npx quartz build`，输出目录 `public`）。
+### 更新流程（一页流程）
 
-**已本地验证**：Cloudflare Pages 的 clean-URL 路由能把**无 `.html` 后缀的中文路径**正确路由到对应页面（`/paradigms/凸显权重收益协方差` → `凸显权重收益协方差.html`），SPA 站内跳转也正常。
+```bash
+python scripts/sync_from_vault.py   # 从 vault 重新同步 + 脱敏
+npx quartz build                    # 构建
+python scripts/verify_build.py      # 自检（必须通过）
+npx wrangler pages deploy public --project-name quant-wiki-showcase --branch main
+```
+
+### 关于自动构建
+
+当前是 **wrangler 直接上传**，`git push` **不会**自动触发部署 —— 改完内容要跑上面的更新流程。
+
+如果想要「push 即自动部署」，需要另建一个走 Git 集成的 Pages 项目（连本仓库），配置为：
+
+| 设置项 | 值 |
+|---|---|
+| Framework preset | `None` |
+| Build command | `npx quartz build` ← 不要用 `npm run build`（其 `prebuild` 会跑 `install-plugins`，在 CI 上会失败） |
+| Build output directory | `public` |
+| 环境变量 | `NODE_VERSION` = `22`（Quartz v5 要求 Node ≥22） |
+
+Git 集成构建能从仓库里的 `content/` 出站，**不需要** vault。
+
+### 已实测的上线行为
+
+- Cloudflare Pages 的 clean-URL 路由能把**无 `.html` 后缀的中文路径**正确路由（`/paradigms/凸显权重收益协方差` → `凸显权重收益协方差.html`），SPA 站内跳转正常。
+- **`.md` 源文件访问返回 404** —— 源文没有进入产物，也无法被直接拉取。
+- `X-Robots-Tag: noindex, nofollow, noarchive` 响应头生效（来自 `content/_headers`），`robots.txt` 返回 `Disallow: /`。
+- 线上页面控制台 0 error / 0 warning。
 
 ### 防收录
 
-投简历用的站点建议关掉搜索引擎收录，在 `content/` 里放一个 `robots.txt` 并在站点配置里加 `noindex`，同时不要把链接公开传播。
+已配好两道：`content/robots.txt`（`Disallow: /`）+ `content/_headers`（`X-Robots-Tag: noindex`）。两个文件都会随构建落到产物根目录，Cloudflare Pages 会自动读取 `_headers`。
 
 ## 已知坑（踩过的）
 

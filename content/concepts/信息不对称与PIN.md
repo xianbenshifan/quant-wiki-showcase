@@ -1,0 +1,39 @@
+---
+title: 信息不对称与PIN
+concept_id: 信息不对称与PIN
+explains: [信息风险补偿, 知情卖出信号]
+summary: 用知情与非知情委托到达的结构模型直接测度信息不对称，PIN 越高则信息风险溢价越高
+provenance_state: extracted
+stage: draft
+type: concept
+status: draft
+created: 2026-08-26
+updated: 2026-08-26
+tags:
+  - concept
+---
+title: 信息不对称与PIN
+summary: 用知情与非知情委托到达的结构模型直接测度信息不对称，PIN 越高则信息风险溢价越高
+created: 2026-08-26
+updated: 2026-08-26
+tags:
+  - concept
+
+## 理论定义
+
+经典市场微观结构设定：信息事件以概率 α 发生，坏消息概率 δ；知情交易者以到达率 μ 提交委托，非知情以 ε 提交，过程为泊松。知情交易概率 PIN 是知情委托在总委托中的占比，直接测度一段时间内的信息不对称。PIN 越大，信息风险越高，投资者要求的风险回报通常越高，与未来收益正相关。
+
+## 解释的 alpha
+
+- [[alpha/信息风险补偿|信息风险补偿]] —— PIN 测度的是持仓面对知情者时的信息风险溢价。
+- [[alpha/知情卖出信号|知情卖出信号]] —— 同一到达率结构下，知情卖出也会在主动方向上留下痕迹。
+
+## 相关理论
+
+（无相邻在役理论）
+
+## Sources
+
+- 知情交易概率因子
+- Easley, Kiefer, O'Hara et al., 1996, JF
+- Easley, D., Kiefer, N. M., O'Hara, M. et al. (1996), Journal of Finance

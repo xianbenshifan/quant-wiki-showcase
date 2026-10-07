@@ -1,0 +1,19 @@
+# 依赖与构建产物
+node_modules/
+public/
+.quartz-cache/
+quartz/plugins/loader/.plugins/
+.wrangler/
+
+# 本机相关配置（含本机 vault 路径，不要提交）
+publish.config.json
+
+# 运行日志与截图
+*.log
+*.png
+.playwright-mcp/
+
+# 注意：不要把 content/ 加进忽略列表。
+# Quartz 的内容 glob 会尊重 .gitignore，一旦忽略 content/，构建会「Found 0 input files」。
+# content/ 是可重建的派生产物，但 Cloudflare Pages 的 Git 集成构建拿不到 vault，
+# 必须靠仓库里的 content/ 才能构建，因此这里刻意不忽略它。

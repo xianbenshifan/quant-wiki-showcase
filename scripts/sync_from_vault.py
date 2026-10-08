@@ -76,6 +76,8 @@ class PublishConfig:
     redact_prefixes: list[str]
     curated: list[str]
     regenerate_index: bool = True
+    # 首页上声明的「原始规模」。0 = 用实测值（推荐）。
+    original_total: int = 0
     notice: DemoNotice = field(default_factory=DemoNotice)
     static_files: dict[str, str] = field(default_factory=dict)
     dry_run: bool = False
@@ -157,6 +159,7 @@ def load_config(argv: list[str] | None = None) -> PublishConfig:
         redact_prefixes=list(raw.get("redactWikiLinkPrefixes", [])),
         curated=curated,
         regenerate_index=bool(raw.get("regenerateIndex", True)),
+        original_total=int(raw.get("originalTotal", 0) or 0),
         notice=notice,
         static_files=static_files,
         dry_run=args.dry_run,
@@ -375,12 +378,20 @@ def layer_of(key: str) -> str:
     return p[0]
 
 
-def generate_index(keep_keys: set[str], total_keys: int, vault_rel: str = "wiki") -> str:
+def generate_index(
+    keep_keys: set[str],
+    total_keys: int,
+    original_total: int = 0,
+) -> str:
     """为抽稀后的子集生成首页 index.md。
 
     原 index 链向全部页面，抽稀后自身就会制造大量断链，因此必须重写。
     按层分组并标注收录规模，让它是「刻意设计的入口」而非残缺目录。
+
+    `original_total` 是首页上声明的「原始规模」。**默认用实测值**；
+    只有在你确知原始库更大（例如另有一批未纳入本 vault 的内容）时才手动指定。
     """
+    shown_total = original_total if original_total > 0 else total_keys
     buckets: dict[str, list[str]] = defaultdict(list)
     for k in keep_keys:
         if k == "index":
@@ -398,10 +409,13 @@ def generate_index(keep_keys: set[str], total_keys: int, vault_rel: str = "wiki"
     lines.append("")
     lines.append("# 量化因子知识库")
     lines.append("")
-    lines.append(
-        f"> 本演示版收录 **{len(keep_keys)} 页**（原始规模 {total_keys} 页），"
-        f"按知识层级组织。"
-    )
+    if shown_total > len(keep_keys):
+        lines.append(
+            f"> 原始知识库共 **{shown_total} 页**；受静态页面资源限制无法全量展示，"
+            f"本演示版收录其中 **{len(keep_keys)} 页**。"
+        )
+    else:
+        lines.append(f"> 本演示版收录 **{len(keep_keys)} 页**。")
     lines.append("")
     lines.append(
         "知识库按「理论概念 → 收益来源 → 构造范式 → 可复用构件」四层实体建模，"
@@ -523,7 +537,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # 抽稀模式下重生首页
     if keep_keys is not None and cfg.regenerate_index:
-        body = generate_index(keep_keys, len(index.keys))
+        body = generate_index(keep_keys, len(index.keys), cfg.original_total)
         if cfg.notice.enabled and cfg.notice.index_lines:
             body = insert_callout(body, build_callout(
                 cfg.notice.kind, cfg.notice.index_title,

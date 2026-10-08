@@ -7,8 +7,9 @@
   "frontmatterKeep": ["title", "tags", "aliases", "summary", "description", "created", "updated"],
   "redactWikiLinkPrefixes": ["source-docs", "meta"],
   "curated": [],
+  "originalTotal": 0,
   "staticFiles": {
-    "$comment": "这些文件会随每次同步重新写入 content/。必须放这里，否则会被同步时的目录重建抹掉。以 $ 开头的键是注释。注意 _headers 会让该站失去 HTTP Range 支持——本静态站无音视频，可以带；一旦要放媒体就删掉它。",
+    "$comment": "这些文件会随每次同步重新写入 content/。必须放这里，否则会被同步时的目录重建抹掉。以 $ 开头的键是注释。",
     "robots.txt": "User-agent: *\nDisallow: /\n",
     "_headers": "/*\n  X-Robots-Tag: noindex, nofollow, noarchive\n"
   },
@@ -18,10 +19,13 @@
     "scope": "all",
     "kind": "info",
     "pageTitle": "演示版本",
-    "pageLines": ["本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。"],
+    "pageLines": [
+      "本站为**项目演示版本**：受**静态页面资源限制**，无法全量展示原始知识库，仅收录**部分页面**，部分内容可能不完整。"
+    ],
     "indexTitle": "演示版本说明",
     "indexLines": [
       "本站是**项目演示版本**，只公开了知识库的**部分页面**。",
+      "受**静态页面的资源限制**，**无法全量展示**完整知识库。",
       "原始知识库中的**研报源文**、内部元数据等**未包含**在内，因此个别页面或引用可能不存在。",
       "完整内容以原始知识库为准。"
     ]

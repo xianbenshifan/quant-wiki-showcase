@@ -70,6 +70,32 @@ python scripts/verify_build.py
 
 简历展示建议只放 60–100 页的精选子集，而非全量。
 
+## 演示版本提示
+
+站点是演示子集（未公开 `source-docs` 等），因此在页面上加提示。文案与开关都在
+`publish.config.json` 的 `demoNotice`：
+
+| 键 | 作用 |
+|---|---|
+| `enabled` | 总开关 |
+| `scope` | `all` = 每页加简版；`index` = 只在首页加 |
+| `kind` | callout 类型（`info` / `note` / `warning` / `tip` …） |
+| `pageTitle` / `pageLines` | 各页简版提示 |
+| `indexTitle` / `indexLines` | 首页详版提示（配了就优先生效） |
+
+提示块里带一个 HTML 注释 sentinel（默认 `DEMO-NOTICE`），既保证幂等，也便于事后检索。
+
+## 静态文件（`robots.txt` / `_headers`）
+
+这两个文件**必须写在 `publish.config.json` 的 `staticFiles` 里**，由同步脚本生成。
+
+⚠️ **不要手工往 `content/` 里放静态文件** —— `sync_from_vault.py` 每次会先
+`rmtree(content/)` 再重建，手工放进去的文件会被抹掉。曾经因为这个，
+`robots.txt` 与 `_headers` 在多次同步后被静默删除，**整个站点的 noindex 保护失效**。
+现在自检会检查这两个文件是否在位、内容是否正确。
+
+## 精选子集（续）
+
 ## 部署到 Cloudflare Pages
 
 **当前状态**：已部署到 <https://quant-wiki-showcase.pages.dev>（Cloudflare Pages 项目 `quant-wiki-showcase`）。

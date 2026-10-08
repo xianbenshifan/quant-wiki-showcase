@@ -101,6 +101,8 @@ def main(argv: list[str] | None = None) -> int:
     # 4. 关键产物
     required = {
         "首页 index.html": public / "index.html",
+        "robots.txt（禁止收录）": public / "robots.txt",
+        "_headers（X-Robots-Tag）": public / "_headers",
     }
     static_dir = public / "static"
     search_index = list(static_dir.glob("contentIndex.json")) if static_dir.is_dir() else []
@@ -138,6 +140,19 @@ def main(argv: list[str] | None = None) -> int:
     for name, path in required.items():
         if not path.exists():
             failures.append(f"缺少关键产物：{name}")
+
+    # robots.txt 必须真的禁止收录
+    robots = public / "robots.txt"
+    if robots.is_file():
+        rt = robots.read_text(encoding="utf-8", errors="ignore")
+        if "Disallow: /" not in rt:
+            failures.append("robots.txt 存在但未包含 `Disallow: /`，收录未被禁止")
+    # _headers 必须带 X-Robots-Tag
+    headers = public / "_headers"
+    if headers.is_file():
+        ht = headers.read_text(encoding="utf-8", errors="ignore")
+        if "X-Robots-Tag" not in ht or "noindex" not in ht:
+            failures.append("_headers 存在但缺少 `X-Robots-Tag: noindex`")
     if not search_index:
         failures.append("未生成搜索索引（搜索功能会失效）")
     if index_leaks:

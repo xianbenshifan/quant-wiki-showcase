@@ -75,12 +75,14 @@ class PublishConfig:
     redact_prefixes: list[str]
     curated: list[str]
     notice: DemoNotice = field(default_factory=DemoNotice)
+    static_files: dict[str, str] = field(default_factory=dict)
     dry_run: bool = False
     # 运行期统计
     written: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     redacted_links: int = 0
     notices_added: int = 0
+    statics_written: list[str] = field(default_factory=list)
     suspect_paths: list[tuple[str, str]] = field(default_factory=list)
 
 
@@ -131,6 +133,16 @@ def load_config(argv: list[str] | None = None) -> PublishConfig:
             f"可用：{', '.join(sorted(CALLOUT_KINDS))}"
         )
 
+    # 随内容一起产出的静态文件（robots.txt / _headers 等）。
+    # ⚠️ 必须由本脚本生成：main() 会先 rmtree(content_dir)，
+    # 手工放进去的静态文件每次同步都会被抹掉（曾经因此丢掉整个 noindex 保护）。
+    # 以 `$` 开头的键是注释，跳过。
+    static_files = {
+        str(k): str(v)
+        for k, v in (raw.get("staticFiles") or {}).items()
+        if not str(k).startswith("$")
+    }
+
     return PublishConfig(
         vault=vault,
         content_dir=content_dir,
@@ -140,6 +152,7 @@ def load_config(argv: list[str] | None = None) -> PublishConfig:
         redact_prefixes=list(raw.get("redactWikiLinkPrefixes", [])),
         curated=list(raw.get("curated", [])),
         notice=notice,
+        static_files=static_files,
         dry_run=args.dry_run,
     )
 
@@ -321,6 +334,15 @@ def main(argv: list[str] | None = None) -> int:
             dst.write_text(text, encoding="utf-8")
         cfg.written.append(rel.as_posix())
 
+    # 静态文件（robots.txt / _headers 等）——必须在此重写，
+    # 否则会随上面那次 rmtree 一起消失。
+    for name, body in cfg.static_files.items():
+        cfg.statics_written.append(name)
+        if not cfg.dry_run:
+            dst = cfg.content_dir / name
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_text(body, encoding="utf-8")
+
     verb = "将写入" if cfg.dry_run else "已写入"
     print(f"vault      : {cfg.vault}")
     print(f"content    : {cfg.content_dir}")
@@ -332,6 +354,10 @@ def main(argv: list[str] | None = None) -> int:
               f"（scope={cfg.notice.scope}, kind={cfg.notice.kind}）")
     else:
         print("演示提示   : 未启用")
+    if cfg.static_files:
+        print(f"静态文件   : {', '.join(cfg.statics_written)}")
+    else:
+        print("静态文件   : 无")
     if cfg.suspect_paths:
         print(f"\n[warn] 正文仍含疑似本机绝对路径 {len(cfg.suspect_paths)} 处，请检查：")
         for rel, hit in cfg.suspect_paths[:20]:

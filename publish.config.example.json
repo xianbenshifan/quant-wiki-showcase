@@ -7,6 +7,11 @@
   "frontmatterKeep": ["title", "tags", "aliases", "summary", "description", "created", "updated"],
   "redactWikiLinkPrefixes": ["source-docs", "meta"],
   "curated": [],
+  "staticFiles": {
+    "$comment": "这些文件会随每次同步重新写入 content/。必须放这里，否则会被同步时的目录重建抹掉。以 $ 开头的键是注释。注意 _headers 会让该站失去 HTTP Range 支持——本静态站无音视频，可以带；一旦要放媒体就删掉它。",
+    "robots.txt": "User-agent: *\nDisallow: /\n",
+    "_headers": "/*\n  X-Robots-Tag: noindex, nofollow, noarchive\n"
+  },
   "demoNotice": {
     "$comment": "演示版本提示。enabled=false 可整体关闭；scope: all=每一页都加简版，index=只在首页加。首页若配了 indexLines 则用详版。kind 为 callout 类型（info/tip/warning/note 等）。",
     "enabled": true,

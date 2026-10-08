@@ -1,22 +1,14 @@
 ---
 title: KyleLambda代理
-pattern_id: KyleLambda代理
-finance_explanation: 单位成交量增量推动的收盘价变化，做保号对数压缩，衡量 Kyle λ 型市场深度（价格冲击斜率）
-return_source: [非流动性与冲击补偿, 信息风险补偿]
-derived_from: ["价格", "成交总量"]
-stage: draft
-type: field
-status: draft
 created: 2026-08-21
 updated: 2026-09-13
 tags:
   - field
 ---
-title: KyleLambda代理
-created: 2026-08-21
-updated: 2026-09-13
-tags:
-  - field
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 金融解释
 

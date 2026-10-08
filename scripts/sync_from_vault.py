@@ -41,9 +41,28 @@ WIKILINK_RE = re.compile(r"\[\[([^\]\|]+?)(?:\|([^\]]*?))?\]\]")
 
 FRONTMATTER_DELIM = "---"
 
+# Quartz 支持的 callout 类型（见 quartz/styles/callouts.scss）
+CALLOUT_KINDS = {
+    "note", "abstract", "info", "todo", "tip", "success",
+    "question", "warning", "failure", "danger", "bug", "example", "quote",
+}
+
 
 class ConfigError(RuntimeError):
     """配置缺失或非法。"""
+
+
+@dataclass
+class DemoNotice:
+    """演示版本提示的配置。"""
+    enabled: bool = False
+    scope: str = "all"          # "all" = 每页都加；"index" = 只在首页加
+    kind: str = "info"          # callout 类型
+    sentinel: str = "DEMO-NOTICE"  # 幂等标记（写入注释里）
+    page_title: str = ""
+    page_lines: list[str] = field(default_factory=list)
+    index_title: str = ""
+    index_lines: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -55,11 +74,13 @@ class PublishConfig:
     frontmatter_keep: list[str]
     redact_prefixes: list[str]
     curated: list[str]
+    notice: DemoNotice = field(default_factory=DemoNotice)
     dry_run: bool = False
     # 运行期统计
     written: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     redacted_links: int = 0
+    notices_added: int = 0
     suspect_paths: list[tuple[str, str]] = field(default_factory=list)
 
 
@@ -90,6 +111,26 @@ def load_config(argv: list[str] | None = None) -> PublishConfig:
 
     content_dir = PRODUCT_ROOT / raw.get("contentDir", "content")
 
+    # 演示提示配置
+    n = raw.get("demoNotice") or {}
+    notice = DemoNotice(
+        enabled=bool(n.get("enabled", False)),
+        scope=str(n.get("scope", "all")),
+        kind=str(n.get("kind", "info")),
+        sentinel=str(n.get("sentinel", "DEMO-NOTICE")),
+        page_title=str(n.get("pageTitle", "")),
+        page_lines=[str(x) for x in (n.get("pageLines") or [])],
+        index_title=str(n.get("indexTitle", "")),
+        index_lines=[str(x) for x in (n.get("indexLines") or [])],
+    )
+    if notice.enabled and notice.scope not in ("all", "index"):
+        raise ConfigError(f"demoNotice.scope 只能是 'all' 或 'index'，收到 {notice.scope!r}")
+    if notice.enabled and notice.kind not in CALLOUT_KINDS:
+        raise ConfigError(
+            f"demoNotice.kind={notice.kind!r} 不是受支持的 callout 类型；"
+            f"可用：{', '.join(sorted(CALLOUT_KINDS))}"
+        )
+
     return PublishConfig(
         vault=vault,
         content_dir=content_dir,
@@ -98,6 +139,7 @@ def load_config(argv: list[str] | None = None) -> PublishConfig:
         frontmatter_keep=list(raw.get("frontmatterKeep", ["title"])),
         redact_prefixes=list(raw.get("redactWikiLinkPrefixes", [])),
         curated=list(raw.get("curated", [])),
+        notice=notice,
         dry_run=args.dry_run,
     )
 
@@ -120,7 +162,7 @@ def strip_frontmatter(text: str, keep: list[str]) -> str:
     if end is None:
         return text
 
-    head, body, tail = lines[: end + 1], lines[1:end], lines[end + 1 :]
+    body, tail = lines[1:end], lines[end + 1 :]
 
     kept: list[str] = []
     skipping = False
@@ -140,7 +182,10 @@ def strip_frontmatter(text: str, keep: list[str]) -> str:
             # 被保留键的缩进块（如 tags 的 `  - xxx`）
             kept.append(line)
 
-    out = head + kept + tail
+    # 重新拼装：只保留开头的分隔线，丢掉原始整段，换成白名单后的键。
+    # ⚠️ 这里若写成 head（= lines[:end+1]，含原 frontmatter 全文）会把
+    # 原始键与白名单行**一起**留在文中，白名单行还会被渲染成正文可见文字。
+    out = lines[:1] + kept + lines[end : end + 1] + tail
     return "".join(out)
 
 
@@ -169,6 +214,57 @@ def redact_wikilinks(text: str, prefixes: list[str]) -> tuple[str, int]:
 def scan_absolute_paths(rel: str, text: str) -> list[tuple[str, str]]:
     """自检：正文里若仍残留本机绝对路径，回报（脱敏兜底网）。"""
     return [(rel, m.group(0)) for m in ABS_PATH_RE.finditer(text)]
+
+
+def build_callout(kind: str, title: str, lines: list[str], sentinel: str = "") -> str:
+    """生成 Quartz/Obsidian callout 文本块。
+
+    HTML 注释里带 sentinel，便于幂等判断与事后检索。
+    """
+    out = []
+    if sentinel:
+        out.append(f"<!-- {sentinel} -->")
+    head = f"> [!{kind}]" + (f" {title}" if title else "")
+    out.append(head)
+    for ln in lines:
+        out.append(f"> {ln}" if ln.strip() else ">")
+    return "\n".join(out) + "\n\n"
+
+
+def insert_callout(text: str, block: str, sentinel: str = "") -> str:
+    """把提示块插到 frontmatter 之后（没有 frontmatter 就放最前）。
+
+    幂等：已含 sentinel 则不重复插入。
+    """
+    if sentinel and sentinel in text:
+        return text
+
+    lines = text.splitlines(keepends=True)
+    if lines and lines[0].strip() == FRONTMATTER_DELIM:
+        for i in range(1, len(lines)):
+            if lines[i].strip() == FRONTMATTER_DELIM:
+                head = "".join(lines[: i + 1])
+                rest = "".join(lines[i + 1 :]).lstrip("\n")
+                return f"{head}\n{block}{rest}"
+    return block + text
+
+
+def notice_for(rel: Path, notice: DemoNotice) -> str | None:
+    """按配置决定这一页要不要加提示、加哪一版。"""
+    if not notice.enabled:
+        return None
+
+    is_index = rel.as_posix() == "index.md"
+
+    # 首页且配了详版 → 用详版
+    if is_index and notice.index_lines:
+        return build_callout(notice.kind, notice.index_title, notice.index_lines, notice.sentinel)
+
+    # 其余页面：仅当 scope=all 时加简版
+    if notice.scope == "all" and notice.page_lines:
+        return build_callout(notice.kind, notice.page_title, notice.page_lines, notice.sentinel)
+
+    return None
 
 
 def selected(rel: Path, cfg: PublishConfig) -> bool:
@@ -211,6 +307,12 @@ def main(argv: list[str] | None = None) -> int:
         text = strip_frontmatter(text, cfg.frontmatter_keep)
         text, n = redact_wikilinks(text, cfg.redact_prefixes)
         cfg.redacted_links += n
+
+        block = notice_for(rel, cfg.notice)
+        if block:
+            text = insert_callout(text, block, cfg.notice.sentinel)
+            cfg.notices_added += 1
+
         cfg.suspect_paths.extend(scan_absolute_paths(rel.as_posix(), text))
 
         if not cfg.dry_run:
@@ -225,6 +327,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{verb}    : {len(cfg.written)} 页")
     print(f"跳过       : {len(cfg.skipped)} 页")
     print(f"wikilink 降级: {cfg.redacted_links} 处")
+    if cfg.notice.enabled:
+        print(f"演示提示   : 已加 {cfg.notices_added} 页"
+              f"（scope={cfg.notice.scope}, kind={cfg.notice.kind}）")
+    else:
+        print("演示提示   : 未启用")
     if cfg.suspect_paths:
         print(f"\n[warn] 正文仍含疑似本机绝对路径 {len(cfg.suspect_paths)} 处，请检查：")
         for rel, hit in cfg.suspect_paths[:20]:

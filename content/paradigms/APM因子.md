@@ -1,31 +1,14 @@
 ---
 title: APM因子
-paradigm_id: APM因子
-pipeline:
-  data: ["价格"]
-  fields:
-    - 超额收益
-    - 收益率
-    - 时段残差差
-  mask: [时段掩码]
-  ops: [截面残差]
-  agg:
-    - 基础统计聚合
-return_source: [时段信息扩散]
-suite_affinity: regular
-stage: draft
-type: paradigm
-status: draft
 created: 2026-08-24
 updated: 2026-09-13
 tags:
   - paradigm
 ---
-title: APM因子
-created: 2026-08-24
-updated: 2026-09-13
-tags:
-  - paradigm
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 范式概述
 

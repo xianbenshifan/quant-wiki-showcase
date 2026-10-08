@@ -6,5 +6,19 @@
   "excludeFiles": ["log.md"],
   "frontmatterKeep": ["title", "tags", "aliases", "summary", "description", "created", "updated"],
   "redactWikiLinkPrefixes": ["source-docs", "meta"],
-  "curated": []
+  "curated": [],
+  "demoNotice": {
+    "$comment": "演示版本提示。enabled=false 可整体关闭；scope: all=每一页都加简版，index=只在首页加。首页若配了 indexLines 则用详版。kind 为 callout 类型（info/tip/warning/note 等）。",
+    "enabled": true,
+    "scope": "all",
+    "kind": "info",
+    "pageTitle": "演示版本",
+    "pageLines": ["本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。"],
+    "indexTitle": "演示版本说明",
+    "indexLines": [
+      "本站是**项目演示版本**，只公开了知识库的**部分页面**。",
+      "原始知识库中的**研报源文**、内部元数据等**未包含**在内，因此个别页面或引用可能不存在。",
+      "完整内容以原始知识库为准。"
+    ]
+  }
 }

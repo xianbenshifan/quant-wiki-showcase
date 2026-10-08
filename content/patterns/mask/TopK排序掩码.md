@@ -1,22 +1,14 @@
 ---
 title: TopK排序掩码
-pattern_id: TopK排序掩码
-finance_explanation: 在单合约日内序列上按某数值字段降序取 Top-K 个时点，形成布尔掩码，用于识别成交最活跃的极端时刻
-derived_from: ["成交总量"]
-return_source: [量激增注意力]
-stage: draft
-type: pattern
-status: draft
 created: 2026-08-24
 updated: 2026-09-13
 tags:
   - pattern
 ---
-title: TopK排序掩码
-created: 2026-08-24
-updated: 2026-09-13
-tags:
-  - pattern
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 金融解释
 

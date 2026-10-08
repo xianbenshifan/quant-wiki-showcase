@@ -36,6 +36,15 @@ ABS_PATH_RE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:\\[^\s\"'|)\]{}\[\]\\]+")
 # frontmatter 若泄漏进搜索索引，等于把内部字段（含本机 locator）公开
 FRONTMATTER_LEAK_KEYS = ("locator", "stage:", "provenance_state", "alpha_id", "paradigm_id")
 
+# 正文里出现这些「YAML 形态」的片段，说明 frontmatter 被错误地渲染成了可见文字。
+# 选标记的标准：在干净的正文里出现 0 次（实测），否则会误报。
+# 注意不要放 `pipeline:` —— 有 3 页正文在讨论 `pipeline: unclassified`，会误报。
+BODY_FRONTMATTER_MARKERS = (
+    "created: 2", "updated: 2",
+    "paradigm_id:", "alpha_id:", "concept_id:", "pattern_id:",
+    "stage: draft", "stage: active", "return_source:",
+)
+
 TEXTUAL_SUFFIXES = {".html", ".css", ".js", ".json", ".xml", ".txt"}
 
 
@@ -113,6 +122,19 @@ def main(argv: list[str] | None = None) -> int:
             if key in text:
                 index_leaks.append(f"{p.name} 含 `{key}`")
 
+    # 4c. frontmatter 被当成正文渲染（白名单拼装写错时的典型症状）
+    body_leaks: list[tuple[str, str]] = []
+    for p in html_files:
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        for m in BODY_FRONTMATTER_MARKERS:
+            if m in text:
+                body_leaks.append((str(p.relative_to(public)), m))
+                break
+        if len(body_leaks) >= 10:
+            break
+
+    print(f"正文含 frontmatter: {len(body_leaks)} 页")
+
     for name, path in required.items():
         if not path.exists():
             failures.append(f"缺少关键产物：{name}")
@@ -120,6 +142,9 @@ def main(argv: list[str] | None = None) -> int:
         failures.append("未生成搜索索引（搜索功能会失效）")
     if index_leaks:
         failures.extend(f"搜索索引泄漏 frontmatter：{x}" for x in index_leaks)
+    if body_leaks:
+        failures.append(f"frontmatter 被渲染成正文（{len(body_leaks)} 页命中），例如：")
+        failures.extend(f"  {rel} 含 `{m}`" for rel, m in body_leaks[:5])
 
     if broken_samples:
         print("\n死链抽样：")

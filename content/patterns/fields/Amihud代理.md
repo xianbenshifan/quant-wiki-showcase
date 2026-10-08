@@ -1,22 +1,14 @@
 ---
 title: Amihud代理
-pattern_id: Amihud代理
-finance_explanation: 绝对收益除以成交额单位量比后做保号对数压缩，与「非流动性」同构但压缩了尾部，衡量单位成交额推动的价格冲击成本
-return_source: [非流动性与冲击补偿]
-derived_from: ["价格", "成交总量"]
-stage: draft
-type: field
-status: draft
 created: 2026-08-21
 updated: 2026-09-13
 tags:
   - field
 ---
-title: Amihud代理
-created: 2026-08-21
-updated: 2026-09-13
-tags:
-  - field
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 金融解释
 

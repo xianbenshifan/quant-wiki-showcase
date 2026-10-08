@@ -1,22 +1,14 @@
 ---
 title: MAD去极值
-pattern_id: MAD去极值
-type: pattern
-status: draft
 created: 2026-10-06
 updated: 2026-10-06
 tags:
   - pattern
-factor_domain: [fundamental, price_volume]
-finance_explanation: 用截面绝对中位数偏离（MAD）设定极值边界，把超出 ±3×1.483×MAD 的取值按排序均匀压缩到 3~3.5 倍区间内，是因子标准化中比 3σ 更稳健的去极值步骤
-op_arity: unary
-stage: draft
 ---
-title: MAD去极值
-created: 2026-10-06
-updated: 2026-10-06
-tags:
-  - pattern
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 金融解释
 

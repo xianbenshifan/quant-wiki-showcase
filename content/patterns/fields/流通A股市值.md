@@ -1,25 +1,15 @@
 ---
 title: 流通A股市值
-pattern_id: 流通A股市值
-type: field
-status: draft
 created: 2026-09-16
 updated: 2026-09-16
 tags:
   - field
-factor_domain: [fundamental]
 aliases: [a_share_market_val_in_circulation, circulating a-share value]
-finance_explanation: 仅 A 股流通股份的市值
-derived_from: ["股东与股本", "价格"]
-mutable_axes: 计算口径（数据源直接提供 / 自行加工）；对齐时点（报告期 / 公告日）
-stage: draft
 ---
-title: 流通A股市值
-created: 2026-09-16
-updated: 2026-09-16
-tags:
-  - field
-aliases: [a_share_market_val_in_circulation, circulating a-share value]
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 金融解释
 

@@ -1,27 +1,14 @@
 ---
 title: ICIR加权复合因子
-paradigm_id: ICIR加权复合因子
-pipeline:
-  data: ["价格", "利润总额与净利润"]
-  fields: ["净资产收益率", "盈利收益率", "市销率倒数", "单季度净利润同比增速", "标准化预期外盈利", "区间反转", "非流动性"]
-  mask: none
-  ops: ["截面z得分", "对称正交"]
-  agg: ["ICIR加权聚合"]
-suite_affinity: regular
-factor_domain: [fundamental, price_volume]
-stage: draft
-type: paradigm
-status: draft
 created: 2026-10-06
 updated: 2026-10-06
 tags:
   - paradigm
 ---
-title: ICIR加权复合因子
-created: 2026-10-06
-updated: 2026-10-06
-tags:
-  - paradigm
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 范式概述
 

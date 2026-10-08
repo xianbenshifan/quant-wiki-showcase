@@ -1,25 +1,15 @@
 ---
 title: BBI动量
-pattern_id: BBI动量
-type: field
-status: draft
 created: 2026-10-06
 updated: 2026-10-06
 tags:
   - field
-factor_domain: [price_volume]
 aliases: [BBIC, BBI动量指标, bull bear index momentum, 多空均线比价]
-finance_explanation: 多空均线（若干不同窗口均线的等权合成）与当前价的比值，把多尺度多空力量的相对位置表述为一个无量纲的趋势读数
-derived_from: ["价格"]
-mutable_axes: BBI 窗口组合（3/6/12/24）；均线类型（简单/指数）；比值方向（BBI/价格 或 价格/BBI）
-stage: draft
 ---
-title: BBI动量
-created: 2026-10-06
-updated: 2026-10-06
-tags:
-  - field
-aliases: [BBIC, BBI动量指标, bull bear index momentum, 多空均线比价]
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 金融解释
 

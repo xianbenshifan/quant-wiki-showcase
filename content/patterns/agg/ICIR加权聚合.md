@@ -1,25 +1,15 @@
 ---
 title: ICIR加权聚合
-pattern_id: ICIR加权聚合
-type: pattern
-status: draft
 created: 2026-10-06
 updated: 2026-10-06
 tags:
   - pattern
-op_arity: multi
 aliases: [最大ICIR加权, IC_IR加权法, ICIR加权合成, 滚动ICIR加权, max ICIR weighting, icir_weight]
-finance_explanation: 用因子历史 IC 序列的均值刻画预测力、以 IC 的波动（或协方差）刻画稳健性，据此给多个因子分配权重并线性合成为单一信号
-derived_from: ["价格"]
-mutable_axes: 权重求法（简单 ICIR 归一化 / 均值—方差最优）；IC 口径（Pearson / Spearman）；回看窗口（12 期 / 滚动 3 年）；协方差估计（样本 / 收缩）；约束（和为一 / 叠加 $[-1,1]$ 箱式）；求解（解析解 / SLSQP）
-stage: draft
 ---
-title: ICIR加权聚合
-created: 2026-10-06
-updated: 2026-10-06
-tags:
-  - pattern
-aliases: [最大ICIR加权, IC_IR加权法, ICIR加权合成, 滚动ICIR加权, max ICIR weighting, icir_weight]
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 金融解释
 

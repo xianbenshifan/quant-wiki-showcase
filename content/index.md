@@ -1,19 +1,17 @@
 ---
-type: meta
 title: Wiki Index
-stage: active
 created: 2026-08-21
 updated: 2026-10-06
 tags:
   - meta
   - index
 ---
-title: Wiki Index
-created: 2026-08-21
-updated: 2026-10-06
-tags:
-  - meta
-  - index
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本说明
+> 本站是**项目演示版本**，只公开了知识库的**部分页面**：构造范式、收益来源、理论概念、数据语义与可复用构件。
+> 原始知识库中的**研报源文（source-docs）**、内部元数据与冲突记录等**未包含**在内；指向这些内容的链接已改写为普通文字，因此**个别页面或引用可能不存在或无法跳转**。
+> 页面数量与统计口径以演示子集为准，**完整内容以原始知识库为准**。
 
 # Wiki Index（量化因子知识库）
 

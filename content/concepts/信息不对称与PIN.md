@@ -1,23 +1,15 @@
 ---
 title: 信息不对称与PIN
-concept_id: 信息不对称与PIN
-explains: [信息风险补偿, 知情卖出信号]
 summary: 用知情与非知情委托到达的结构模型直接测度信息不对称，PIN 越高则信息风险溢价越高
-provenance_state: extracted
-stage: draft
-type: concept
-status: draft
 created: 2026-08-26
 updated: 2026-08-26
 tags:
   - concept
 ---
-title: 信息不对称与PIN
-summary: 用知情与非知情委托到达的结构模型直接测度信息不对称，PIN 越高则信息风险溢价越高
-created: 2026-08-26
-updated: 2026-08-26
-tags:
-  - concept
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 理论定义
 

@@ -1,4 +1,0 @@
-# Cloudflare Pages 会读取产物根目录的 _headers 文件。
-# 简历专用站点：从 HTTP 响应头层面禁止搜索引擎收录，比只靠 robots.txt 更硬。
-/*
-  X-Robots-Tag: noindex, nofollow, noarchive

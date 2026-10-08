@@ -1,21 +1,14 @@
 ---
 title: 整窗口z得分
-pattern_id: 整窗口z得分
-finance_explanation: (x - 整段均值) / 整段标准差，把当前值放到该合约整段历史分布中看相对位置
-op_arity: unary
-stage: draft
-type: pattern
-status: draft
 created: 2026-08-24
 updated: 2026-09-13
 tags:
   - pattern
 ---
-title: 整窗口z得分
-created: 2026-08-24
-updated: 2026-09-13
-tags:
-  - pattern
+
+<!-- DEMO-NOTICE -->
+> [!info] 演示版本
+> 本站为**项目演示版本**，仅收录知识库的**部分页面**，部分内容可能不完整。
 
 ## 金融解释
 

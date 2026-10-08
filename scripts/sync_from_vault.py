@@ -27,6 +27,7 @@ import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from collections import defaultdict
 
 PRODUCT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = PRODUCT_ROOT / "publish.config.json"
@@ -74,6 +75,7 @@ class PublishConfig:
     frontmatter_keep: list[str]
     redact_prefixes: list[str]
     curated: list[str]
+    regenerate_index: bool = True
     notice: DemoNotice = field(default_factory=DemoNotice)
     static_files: dict[str, str] = field(default_factory=dict)
     dry_run: bool = False
@@ -83,6 +85,7 @@ class PublishConfig:
     redacted_links: int = 0
     notices_added: int = 0
     statics_written: list[str] = field(default_factory=list)
+    index_regenerated: bool = False
     suspect_paths: list[tuple[str, str]] = field(default_factory=list)
 
 
@@ -143,6 +146,8 @@ def load_config(argv: list[str] | None = None) -> PublishConfig:
         if not str(k).startswith("$")
     }
 
+    curated = [str(x) for x in (raw.get("curated") or []) if str(x).strip()]
+
     return PublishConfig(
         vault=vault,
         content_dir=content_dir,
@@ -150,7 +155,8 @@ def load_config(argv: list[str] | None = None) -> PublishConfig:
         exclude_files=list(raw.get("excludeFiles", [])),
         frontmatter_keep=list(raw.get("frontmatterKeep", ["title"])),
         redact_prefixes=list(raw.get("redactWikiLinkPrefixes", [])),
-        curated=list(raw.get("curated", [])),
+        curated=curated,
+        regenerate_index=bool(raw.get("regenerateIndex", True)),
         notice=notice,
         static_files=static_files,
         dry_run=args.dry_run,
@@ -202,24 +208,87 @@ def strip_frontmatter(text: str, keep: list[str]) -> str:
     return "".join(out)
 
 
-def redact_wikilinks(text: str, prefixes: list[str]) -> tuple[str, int]:
-    """把指向非公开目录的 wikilink 降级为纯文本，返回 (新文本, 降级次数)。"""
-    if not prefixes:
+def norm_link_target(raw: str) -> str:
+    """规范化 wikilink 目标。
+
+    ⚠️ Markdown 表格里 `[[目标|别名]]` 必须写成 `[[目标\\|别名]]`，
+    正则会把转义产生的尾部反斜杠吃进目标里，必须去掉，
+    否则这些链接会被误判为「无法解析」（实测约 310 条）。
+    """
+    return raw.split("#", 1)[0].strip().rstrip("\\").strip()
+
+
+class LinkIndex:
+    """vault 内的页面索引，用于判断某个 wikilink 指向的页是否被收录。
+
+    需要按「全路径」与「文件名」两种方式解析：Quartz 的链接解析用的是
+    shortest 策略，`[[凸显权重]]` 也能命中 `patterns/fields/凸显权重`。
+    """
+
+    def __init__(self, wiki_root: Path, exclude_dirs: set[str], exclude_files: set[str]) -> None:
+        self.keys: set[str] = set()
+        self.by_base: dict[str, list[str]] = defaultdict(list)
+        for p in sorted(wiki_root.rglob("*.md")):
+            rel = p.relative_to(wiki_root).as_posix()
+            if set(rel.split("/")[:-1]) & exclude_dirs:
+                continue
+            if p.name in exclude_files or p.name.startswith("."):
+                continue
+            key = rel[:-3]
+            self.keys.add(key)
+            self.by_base[key.rsplit("/", 1)[-1]].append(key)
+
+    def resolve(self, target: str) -> str | None:
+        """把链接目标解析成页面 key；解析不出来返回 None。"""
+        t = norm_link_target(target)
+        if not t:
+            return None
+        if t in self.keys:
+            return t
+        cands = self.by_base.get(t.rsplit("/", 1)[-1], [])
+        return cands[0] if len(cands) == 1 else None
+
+
+def redact_wikilinks(
+    text: str,
+    prefixes: list[str],
+    keep_keys: set[str] | None = None,
+    index: "LinkIndex | None" = None,
+) -> tuple[str, int]:
+    """把「不该公开」的 wikilink 降级为纯文本，返回 (新文本, 降级次数)。
+
+    两种降级条件（命中任一即降级）：
+    1. 目标在 `prefixes` 指定的目录下（source-docs / meta 等）
+    2. 传入了 keep_keys（抽稀模式）且目标解析到的页**不在**收录集合内
+
+    不处理会导致页面上出现大量半透明的 broken 链接（Quartz 对
+    解析不到的内部链接会加 `broken` 类，视觉上是「坏掉的链接」）。
+    """
+    if not prefixes and keep_keys is None:
         return text, 0
     count = 0
 
     def repl(match: re.Match[str]) -> str:
         nonlocal count
-        target = match.group(1).strip()
+        raw = match.group(1)
         alias = match.group(2)
-        head = target.split("/", 1)[0].split("#", 1)[0].strip()
-        if head not in prefixes:
+        head = raw.split("/", 1)[0].split("#", 1)[0].strip()
+
+        drop = head in prefixes
+        if not drop and keep_keys is not None and index is not None:
+            resolved = index.resolve(raw)
+            # 解析不到的一般是笔误或内部锚点，保持原样交给 Quartz
+            if resolved is not None and resolved not in keep_keys:
+                drop = True
+
+        if not drop:
             return match.group(0)
+
         count += 1
         if alias is not None:
             return alias.strip()
-        # 无别名时用末段，去掉锚点
-        return target.split("#", 1)[0].rsplit("/", 1)[-1].strip()
+        # 无别名时用末段（去掉锚点与转义反斜杠）
+        return norm_link_target(raw).rsplit("/", 1)[-1].strip()
 
     return WIKILINK_RE.sub(repl, text), count
 
@@ -280,6 +349,102 @@ def notice_for(rel: Path, notice: DemoNotice) -> str | None:
     return None
 
 
+# 各层在首页里的展示名与排序权重
+LAYER_META: list[tuple[str, str]] = [
+    ("alpha", "收益来源（Alpha）"),
+    ("concepts", "理论概念（Concepts）"),
+    ("data-semantics/量价", "数据语义 · 量价"),
+    ("data-semantics/基本面", "数据语义 · 基本面"),
+    ("data-semantics", "数据语义 · 其他"),
+    ("paradigms", "构造范式（Paradigms）"),
+    ("patterns/fields", "可复用构件 · 字段（Fields）"),
+    ("patterns/ops", "可复用构件 · 算子（Ops）"),
+    ("patterns/agg", "可复用构件 · 聚合（Agg）"),
+    ("patterns/mask", "可复用构件 · 掩码（Mask）"),
+    ("patterns", "可复用构件 · 其他"),
+]
+
+
+def layer_of(key: str) -> str:
+    """把页面 key 归到一个展示层。"""
+    p = key.split("/")
+    if p[0] == "patterns" and len(p) >= 2:
+        return "patterns/ops" if p[1] == "ops" else f"patterns/{p[1]}"
+    if p[0] == "data-semantics":
+        return f"data-semantics/{p[1]}" if len(p) >= 2 else "data-semantics"
+    return p[0]
+
+
+def generate_index(keep_keys: set[str], total_keys: int, vault_rel: str = "wiki") -> str:
+    """为抽稀后的子集生成首页 index.md。
+
+    原 index 链向全部页面，抽稀后自身就会制造大量断链，因此必须重写。
+    按层分组并标注收录规模，让它是「刻意设计的入口」而非残缺目录。
+    """
+    buckets: dict[str, list[str]] = defaultdict(list)
+    for k in keep_keys:
+        if k == "index":
+            continue
+        buckets[layer_of(k)].append(k)
+
+    lines: list[str] = []
+    lines.append("---")
+    lines.append("title: Wiki Index")
+    lines.append("type: meta")
+    lines.append("tags:")
+    lines.append("  - meta")
+    lines.append("  - index")
+    lines.append("---")
+    lines.append("")
+    lines.append("# 量化因子知识库")
+    lines.append("")
+    lines.append(
+        f"> 本演示版收录 **{len(keep_keys)} 页**（原始规模 {total_keys} 页），"
+        f"按知识层级组织。"
+    )
+    lines.append("")
+    lines.append(
+        "知识库按「理论概念 → 收益来源 → 构造范式 → 可复用构件」四层实体建模，"
+        "并以数据语义作为底层参照；页面之间用双向链接构成因子知识图谱。"
+    )
+    lines.append("")
+
+    shown: set[str] = set()
+    for layer, title in LAYER_META:
+        ks = buckets.get(layer)
+        if not ks:
+            continue
+        shown.add(layer)
+        ks = sorted(ks)
+        lines.append(f"## {title}")
+        lines.append("")
+        lines.append(f"共 {len(ks)} 页")
+        lines.append("")
+        for k in ks:
+            label = k.rsplit("/", 1)[-1]
+            lines.append(f"- [[{k}|{label}]]")
+        lines.append("")
+
+    # 兜底：没被 LAYER_META 覆盖的层
+    rest = {k: v for k, v in buckets.items() if k not in shown and v}
+    if rest:
+        lines.append("## 其他")
+        lines.append("")
+        for layer in sorted(rest):
+            for k in sorted(rest[layer]):
+                lines.append(f"- [[{k}|{k.rsplit('/', 1)[-1]}]]")
+        lines.append("")
+
+    lines.append("---")
+    lines.append("")
+    lines.append(
+        "> [!info] 关于本演示版\n"
+        "> 以上为**部分页面**。完整知识库还包含研报源文归档、"
+        "内部元数据与冲突记录，以及更多构造范式与可复用构件，未在此公开。"
+    )
+    return "\n".join(lines) + "\n"
+
+
 def selected(rel: Path, cfg: PublishConfig) -> bool:
     parts = set(rel.parts[:-1])
     if parts & set(cfg.exclude_dirs):
@@ -310,15 +475,37 @@ def main(argv: list[str] | None = None) -> int:
             shutil.rmtree(cfg.content_dir)
         cfg.content_dir.mkdir(parents=True, exist_ok=True)
 
+    # 抽稀模式：把 curated 清单转成 key 集合（配置里带 .md，key 不带）
+    keep_keys: set[str] | None = None
+    if cfg.curated:
+        keep_keys = {p[:-3] if p.endswith(".md") else p for p in cfg.curated}
+
+    # 全量页面索引，用于判断链接指向的页是否被收录
+    index = LinkIndex(wiki, set(cfg.exclude_dirs), set(cfg.exclude_files))
+
+    if keep_keys is not None:
+        unknown = sorted(k for k in keep_keys if k not in index.keys)
+        if unknown:
+            print(f"[fail] curated 里有 {len(unknown)} 条在 vault 中找不到：", file=sys.stderr)
+            for k in unknown[:10]:
+                print(f"  - {k}", file=sys.stderr)
+            return 2
+
     for src in sorted(wiki.rglob("*.md")):
         rel = src.relative_to(wiki)
+
+        # 抽稀模式下 index 由脚本重新生成，跳过 vault 里的原文件
+        if keep_keys is not None and cfg.regenerate_index and rel.as_posix() == "index.md":
+            cfg.skipped.append(rel.as_posix())
+            continue
+
         if not selected(rel, cfg):
             cfg.skipped.append(rel.as_posix())
             continue
 
         text = src.read_text(encoding="utf-8")
         text = strip_frontmatter(text, cfg.frontmatter_keep)
-        text, n = redact_wikilinks(text, cfg.redact_prefixes)
+        text, n = redact_wikilinks(text, cfg.redact_prefixes, keep_keys, index)
         cfg.redacted_links += n
 
         block = notice_for(rel, cfg.notice)
@@ -334,6 +521,18 @@ def main(argv: list[str] | None = None) -> int:
             dst.write_text(text, encoding="utf-8")
         cfg.written.append(rel.as_posix())
 
+    # 抽稀模式下重生首页
+    if keep_keys is not None and cfg.regenerate_index:
+        body = generate_index(keep_keys, len(index.keys))
+        if cfg.notice.enabled and cfg.notice.index_lines:
+            body = insert_callout(body, build_callout(
+                cfg.notice.kind, cfg.notice.index_title,
+                cfg.notice.index_lines, cfg.notice.sentinel), cfg.notice.sentinel)
+        if not cfg.dry_run:
+            (cfg.content_dir / "index.md").write_text(body, encoding="utf-8")
+        cfg.written.append("index.md")
+        cfg.index_regenerated = True
+
     # 静态文件（robots.txt / _headers 等）——必须在此重写，
     # 否则会随上面那次 rmtree 一起消失。
     for name, body in cfg.static_files.items():
@@ -346,9 +545,13 @@ def main(argv: list[str] | None = None) -> int:
     verb = "将写入" if cfg.dry_run else "已写入"
     print(f"vault      : {cfg.vault}")
     print(f"content    : {cfg.content_dir}")
+    if keep_keys is not None:
+        print(f"抽稀模式   : curated 收录 {len(keep_keys)} 页"
+              f"（vault 共 {len(index.keys)} 页）")
     print(f"{verb}    : {len(cfg.written)} 页")
     print(f"跳过       : {len(cfg.skipped)} 页")
     print(f"wikilink 降级: {cfg.redacted_links} 处")
+    print(f"首页重生   : {'是' if cfg.index_regenerated else '否'}")
     if cfg.notice.enabled:
         print(f"演示提示   : 已加 {cfg.notices_added} 页"
               f"（scope={cfg.notice.scope}, kind={cfg.notice.kind}）")

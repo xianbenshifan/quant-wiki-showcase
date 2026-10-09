@@ -77,7 +77,3 @@ $$ m_t = \mathbb{1}\!\left[\, t \in \operatorname{TopK}(x) \,\right] $$
 - [[patterns/fields/成交量增量|成交量增量]]（常见排序字段）
 - [[patterns/mask/分位掩码|分位掩码]]（固定比例的连续量掩码，与本页的固定数量互补）
 - [[patterns/mask/极端收益掩码|极端收益掩码]]（同为「取极端若干根 bar」，但按收益偏离而非成交量排序）
-
-## Sources
-
-- 待著而救因子

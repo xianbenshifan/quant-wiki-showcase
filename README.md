@@ -190,6 +190,58 @@ Quartz 的链接解析是 `shortest` 策略，`[[凸显权重]]` 也能命中
 
 提示块里带一个 HTML 注释 sentinel（默认 `DEMO-NOTICE`），既保证幂等，也便于事后检索。
 
+## 访问统计（Web Analytics）
+
+站点接入了 **Cloudflare Web Analytics**（免费、隐私优先）。查询访问明细用：
+
+```bash
+python scripts/query_rum.py                    # 近 7 天明细（时间/国家/浏览器/路径）
+python scripts/query_rum.py --days 1 --by-path  # 只看今天，按路径聚合
+python scripts/query_rum.py --by-day            # 按日期聚合
+python scripts/query_rum.py --json              # 输出 JSON
+```
+
+首次使用复制配置：
+
+```bash
+cp rum.config.example.json rum.config.json     # 填 accountTag（已被 .gitignore 忽略）
+```
+
+也可用环境变量：`CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN`。
+凭证默认复用 wrangler 的 OAuth 配置，**过期会自动刷新**。
+
+### 四个实测踩过的坑
+
+1. **数据不是实时的 —— 入库延迟约 4–5 分钟。**
+   刚访问完立刻查是空的，别据此判断「没统计到」。实测：10:30:50 访问，
+   10:44 才在 API 里看到。
+
+2. **beacon 里的 token 与 RUM 的 `siteTag` 不是同一个值。**
+   实测某站点：beacon 上报 `e00ac9a7…`，而数据落在 `7dabdf73…`。
+   因此脚本**默认不按 siteTag 过滤**，并会在发现多个 siteTag 时提示 ——
+   只看面板某一个条目可能会以为「没有数据」。
+
+3. **`wrangler` 的 OAuth 凭证有效期约 1 小时**，过期后 API 返回 401。
+   表现为「昨天还能用，今天突然认证失败」。脚本会自动跑一次
+   `wrangler whoami` 刷新。
+
+4. **404 页面不注入统计脚本**，所以访问不存在的路径不会被计入。
+
+### 关于量的预期
+
+站点是 **`noindex`** 的，不会有搜索引擎流量 —— 统计到的基本只是
+「你或收到链接的人访问了几次」。**量小是正常的**，不代表统计坏了。
+
+### 能力边界
+
+| 能力 | 可用性 |
+|---|---|
+| Web Analytics（PV/UV、路径、来源、国家、时间序列） | ✅ 免费 |
+| Pages 项目 Analytics（请求数、带宽、状态码） | ✅ |
+| 实时日志 `wrangler pages deployment tail` | ❌ **纯静态站不支持**（实测报错：需 Pages Function） |
+| 逐条历史请求日志 | ❌ Logpush 属 Enterprise |
+| 访客 IP / 身份 | ❌ 隐私优先设计，不收集 |
+
 ## 静态文件（`robots.txt` / `_headers`）
 
 这两个文件**必须写在 `publish.config.json` 的 `staticFiles` 里**，由同步脚本生成。

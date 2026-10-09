@@ -1,0 +1,5 @@
+{
+  "$comment": "Cloudflare Web Analytics 的查询配置。复制为 rum.config.json 使用；该文件已被 .gitignore 忽略。优先级：命令行参数 > 环境变量 > 本文件。",
+  "accountTag": "在这里填你的 Cloudflare accountTag",
+  "siteTag": "可留空。留空时脚本会列出所有有数据的 siteTag 并聚合展示（同一站点可能出现多个）。"
+}

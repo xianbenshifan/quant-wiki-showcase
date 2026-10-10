@@ -218,6 +218,18 @@ def main(argv: list[str] | None = None) -> int:
     if site:
         rows = [r for r in rows if (r.get("dimensions") or {}).get("siteTag") == site]
 
+    # siteTag 别名（便于辨认是哪个站点/属性）
+    labels: dict[str, str] = {}
+    if DEFAULT_CONFIG.is_file():
+        try:
+            cfg2 = json.loads(DEFAULT_CONFIG.read_text(encoding="utf-8"))
+            labels = cfg2.get("siteTagLabels") or {}
+        except Exception:
+            labels = {}
+
+    def label_of(tag: str) -> str:
+        return labels.get(tag, "")
+
     if args.json:
         print(json.dumps(rows, ensure_ascii=False, indent=2))
         return 0
@@ -225,13 +237,14 @@ def main(argv: list[str] | None = None) -> int:
     print("=" * 82)
     print(f"Web Analytics 访问记录   {since} ~ {until}   账号 {account[:8]}…")
     if site:
-        print(f"（已按 siteTag 过滤：{site}）")
+        print(f"（已按 siteTag 过滤：{site}{'  ' + label_of(site) if label_of(site) else ''}）")
     print("=" * 82)
 
     if not rows:
         print("\n  无记录。")
-        print("  提示：入库有约 4–5 分钟延迟，刚访问完请稍等再查；")
-        print("        若始终为空，检查账号下是否有该站点的 Web Analytics 条目。")
+        print("  提示：入库有约 3–5 分钟延迟，刚访问完请稍等再查；")
+        print("        若始终为空，确认页面里是否真的注入了 beacon 脚本")
+        print("        （域名由 Pages 托管时，Web Analytics 建好后需要一次新部署才会自动注入）。")
         return 0
 
     total = sum(r.get("count", 0) for r in rows)
@@ -241,9 +254,10 @@ def main(argv: list[str] | None = None) -> int:
     for r in rows:
         tags[(r.get("dimensions") or {}).get("siteTag") or "(无)"] += r.get("count", 0)
     if len(tags) > 1:
-        print("\n  发现多个 siteTag（同一站点可能出现多个，注意别只看其中一个）：")
+        print("\n  发现多个 siteTag（同一站点可能出现多个；beacon 的 token 与 siteTag 不是同一个值）：")
         for t, n in sorted(tags.items(), key=lambda x: -x[1]):
-            print(f"    {t}   {n} 次")
+            lab = label_of(t)
+            print(f"    {t}   {n} 次{('   ← ' + lab) if lab else ''}")
 
     print(f"\n  总页面浏览：{total} 次，共 {len(rows)} 条聚合记录\n")
 
@@ -262,14 +276,16 @@ def main(argv: list[str] | None = None) -> int:
         for d, n in sorted(agg.items(), reverse=True):
             print(f"  {n:>6}  {d}")
     else:
-        print(f"  {'日期':<12}{'次数':>5}  {'国家':<8}{'浏览器':<10}路径")
+        print(f"  {'日期':<12}{'次数':>5}  {'站点':<10}{'国家':<8}{'浏览器':<10}路径")
         for r in sorted(rows, key=lambda x: ((x.get("dimensions") or {}).get("date") or ""),
                         reverse=True):
             d = r.get("dimensions") or {}
+            lab = label_of(str(d.get("siteTag") or ""))[:9] or "?"
             print(f"  {str(d.get('date')):<12}{r.get('count', 0):>5}  "
+                  f"{lab:<10}"
                   f"{str(d.get('countryName') or '?')[:7]:<8}"
                   f"{str(d.get('userAgentBrowser') or '?')[:9]:<10}"
-                  f"{str(d.get('requestPath'))[:44]}")
+                  f"{str(d.get('requestPath'))[:38]}")
 
     print()
     print("  提示：404 页面不注入统计脚本，因此不存在的路径不会被计入。")
